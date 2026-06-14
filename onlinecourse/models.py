@@ -1,5 +1,6 @@
 import sys
 from django.utils.timezone import now
+
 try:
     from django.db import models
 except Exception:
@@ -29,43 +30,44 @@ class Learner(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
     )
-    STUDENT = 'student'
-    DEVELOPER = 'developer'
-    DATA_SCIENTIST = 'data_scientist'
-    DATABASE_ADMIN = 'dba'
+
+    STUDENT = "student"
+    DEVELOPER = "developer"
+    DATA_SCIENTIST = "data_scientist"
+    DATABASE_ADMIN = "dba"
+
     OCCUPATION_CHOICES = [
-        (STUDENT, 'Student'),
-        (DEVELOPER, 'Developer'),
-        (DATA_SCIENTIST, 'Data Scientist'),
-        (DATABASE_ADMIN, 'Database Admin')
+        (STUDENT, "Student"),
+        (DEVELOPER, "Developer"),
+        (DATA_SCIENTIST, "Data Scientist"),
+        (DATABASE_ADMIN, "Database Admin"),
     ]
+
     occupation = models.CharField(
         null=False,
         max_length=20,
         choices=OCCUPATION_CHOICES,
-        default=STUDENT
+        default=STUDENT,
     )
     social_link = models.URLField(max_length=200)
 
     def __str__(self):
-        return self.user.username + "," + \
-               self.occupation
+        return self.user.username + "," + self.occupation
 
 
 # Course model
 class Course(models.Model):
-    name = models.CharField(null=False, max_length=30, default='online course')
-    image = models.ImageField(upload_to='course_images/')
+    name = models.CharField(null=False, max_length=30, default="online course")
+    image = models.ImageField(upload_to="course_images/")
     description = models.CharField(max_length=1000)
     pub_date = models.DateField(null=True)
     instructors = models.ManyToManyField(Instructor)
-    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through='Enrollment')
+    users = models.ManyToManyField(settings.AUTH_USER_MODEL, through="Enrollment")
     total_enrollment = models.IntegerField(default=0)
     is_enrolled = False
 
     def __str__(self):
-        return "Name: " + self.name + "," + \
-               "Description: " + self.description
+        return "Name: " + self.name + "," + "Description: " + self.description
 
 
 # Lesson model
@@ -75,29 +77,63 @@ class Lesson(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     content = models.TextField()
 
+    def __str__(self):
+        return self.title
+
 
 # Enrollment model
-# <HINT> Once a user enrolled a class, an enrollment entry should be created between the user and course
-# And we could use the enrollment to track information such as exam submissions
+# Once a user enrolls in a class, an enrollment entry is created between the user and course.
+# The enrollment can track information such as exam submissions.
 class Enrollment(models.Model):
-    AUDIT = 'audit'
-    HONOR = 'honor'
-    BETA = 'BETA'
+    AUDIT = "audit"
+    HONOR = "honor"
+    BETA = "BETA"
+
     COURSE_MODES = [
-        (AUDIT, 'Audit'),
-        (HONOR, 'Honor'),
-        (BETA, 'BETA')
+        (AUDIT, "Audit"),
+        (HONOR, "Honor"),
+        (BETA, "BETA"),
     ]
+
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
     date_enrolled = models.DateField(default=now)
     mode = models.CharField(max_length=5, choices=COURSE_MODES, default=AUDIT)
     rating = models.FloatField(default=5.0)
 
+    def __str__(self):
+        return self.user.username + " enrolled in " + self.course.name
 
-# One enrollment could have multiple submission
-# One submission could have multiple choices
-# One choice could belong to multiple submissions
-#class Submission(models.Model):
-#    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
-#    choices = models.ManyToManyField(Choice)
+
+# Question model
+# Each question belongs to one course.
+class Question(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    question_text = models.CharField(max_length=1000)
+    grade = models.IntegerField(default=1)
+
+    def __str__(self):
+        return self.question_text
+
+
+# Choice model
+# Each choice belongs to one question.
+class Choice(models.Model):
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    choice_text = models.CharField(max_length=1000)
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return self.choice_text
+
+
+# Submission model
+# One enrollment can have multiple submissions.
+# One submission can have multiple choices.
+# One choice can belong to multiple submissions.
+class Submission(models.Model):
+    enrollment = models.ForeignKey(Enrollment, on_delete=models.CASCADE)
+    choices = models.ManyToManyField(Choice)
+
+    def __str__(self):
+        return "Submission for " + self.enrollment.user.username
